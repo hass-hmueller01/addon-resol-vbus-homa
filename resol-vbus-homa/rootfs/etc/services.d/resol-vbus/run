@@ -1,0 +1,64 @@
+#!/usr/bin/with-contenv bashio
+# ==============================================================================
+# Start the service
+# s6-overlay docs: https://github.com/just-containers/s6-overlay
+# ==============================================================================
+
+bashio::log.info "resol-vbus service starting ..."
+
+# Fetch MQTT settings
+source /etc/services.d/get_mqtt_settings.sh
+
+# Declare variables
+declare config_debug
+declare config_refresh
+declare config_tty
+declare resol_vbus_path
+declare resol_vbus_config_file
+
+config_debug=$(bashio::config 'debug')
+config_tty=$(bashio::config 'tty')
+config_refresh=$(bashio::config 'refresh')
+bashio::log.info "Using refresh rate of ${config_refresh} seconds"
+
+resol_vbus_path="/root/resol-vbus-python"
+resol_vbus_config_file="$resol_vbus_path/config.py"
+if [[ ! -f "$resol_vbus_config_file" ]]; then
+    bashio::exit.nok "config_file '$resol_vbus_config_file' not found."
+fi
+
+config_spec_file=$(bashio::config 'spec_file')
+# Check if config_spec_file is an absolute path or just a file name
+if [[ "$config_spec_file" == *"/"* ]]; then
+    resol_vbus_spec_file="$config_spec_file"
+else
+    resol_vbus_spec_file="$resol_vbus_path/spec/$config_spec_file"
+fi
+if [[ -f "$resol_vbus_spec_file" ]]; then
+    bashio::log.info "Using spec_file: $resol_vbus_spec_file"
+else
+    bashio::exit.nok "spec_file '$resol_vbus_spec_file' not found."
+fi
+
+# Configure config.py with the user-specified values
+sed -i "s/^connection.*/connection = \"serial\"/g" "$resol_vbus_config_file"
+sed -i "s#^port.*#port = \"$config_tty\"#g" "$resol_vbus_config_file"
+sed -i "s#^spec_file.*#spec_file = \"$resol_vbus_spec_file\"#g" "$resol_vbus_config_file"
+sed -i "s/^use_units.*/use_units = False/g" "$resol_vbus_config_file"
+if [[ $config_debug == true ]]; then
+    bashio::log.info "Enabling debug output"
+#    sed -i "s/^debug.*/debug = True/g" "$resol_vbus_config_file"
+fi
+
+# Start the service
+while true; do
+    python3 $resol_vbus_path/resol.py > /dev/shm/resol-vbus.json #< $resol_vbus_path/Testaufzeichnung/ResolServiceCenter_RawData_20200513.log
+    [[ $config_debug == true ]] && cat /dev/shm/resol-vbus.json
+    python3 /etc/services.d/resol-vbus/json_mqtt.py < /dev/shm/resol-vbus.json
+    exitcode=$?
+    if [[ $exitcode -ne 0 ]]; then
+        bashio::log.error "resol-vbus run: json_mqtt.py failed with exit code $exitcode."
+    fi
+    [[ $config_debug == true ]] && bashio::log.info "resol-vbus run: Sleeping for $config_refresh seconds."
+    sleep "$config_refresh"
+done
