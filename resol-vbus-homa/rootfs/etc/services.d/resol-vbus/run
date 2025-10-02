@@ -11,10 +11,12 @@ source /etc/services.d/get_mqtt_settings.sh
 
 # Declare variables
 declare config_debug
-declare config_refresh
 declare config_tty
+declare config_refresh
 declare resol_vbus_path
 declare resol_vbus_config_file
+declare resol_vbus_spec_file
+declare device_name
 
 config_debug=$(bashio::config 'debug')
 config_tty=$(bashio::config 'tty')
@@ -27,17 +29,24 @@ if [[ ! -f "$resol_vbus_config_file" ]]; then
     bashio::exit.nok "config_file '$resol_vbus_config_file' not found."
 fi
 
-config_spec_file=$(bashio::config 'spec_file')
-# Check if config_spec_file is an absolute path or just a file name
-if [[ "$config_spec_file" == *"/"* ]]; then
-    resol_vbus_spec_file="$config_spec_file"
+# Determine the specification file from the given device name
+device_name=$(bashio::config 'device_name')
+bashio::log.info "Using RESOL VBus device name: $device_name"
+for file in "$resol_vbus_path/spec/"*.json; do
+    match=$(jq --arg name "$device_name" '
+        .vbusSpecification.device[]
+        | select(.name == $name)
+    ' "$file")
+    if [[ -n "$match" ]]; then
+        resol_vbus_spec_file="$file"
+        bashio::log.debug "$match"
+        break
+    fi
+done
+if [[ -v resol_vbus_spec_file && -f "$resol_vbus_spec_file" ]]; then
+    bashio::log.info "Using specification file: $resol_vbus_spec_file"
 else
-    resol_vbus_spec_file="$resol_vbus_path/spec/$config_spec_file"
-fi
-if [[ -f "$resol_vbus_spec_file" ]]; then
-    bashio::log.info "Using spec_file: $resol_vbus_spec_file"
-else
-    bashio::exit.nok "spec_file '$resol_vbus_spec_file' not found."
+    bashio::exit.nok "No specification file for '$device_name' found."
 fi
 
 # Configure config.py with the user-specified values

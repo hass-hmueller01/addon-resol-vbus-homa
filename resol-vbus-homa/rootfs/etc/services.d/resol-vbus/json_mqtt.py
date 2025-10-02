@@ -28,11 +28,12 @@ try:
 except Exception as e:  # pylint: disable=broad-except
     logging.error("Loading Home Assistant configuration file: %s", e)
     sys.exit(1)
-DEBUG = config.get('debug')
+debug = config.get('debug')
+device_name = config.get('device_name')  # e.g. "DeltaSol BX"
 systemId = config.get("homa_system_id")  # e.g. "123456-solar"
-device=config.get('device_name')  # e.g. Solar
-room=config.get('homa_room')  # e.g. Sensors
-area=config.get('hass_area')  # e.g. Solar
+device = config.get('homa_device')  # e.g. Solar
+room = config.get('homa_room')  # e.g. Sensors
+area = config.get('hass_area')  # e.g. Solar
 
 # Reminder if HomA setup messages have been send, delete and restart to resend
 init_file = "/dev/shm/homa_init."+ systemId
@@ -83,7 +84,6 @@ def homa_init():
     file = open(init_file, 'w', encoding="utf-8")
     #file.write(data)
     file.close()
-    return
 
 
 def homeassistant_config(mqtt_item):
@@ -99,8 +99,7 @@ def homeassistant_config(mqtt_item):
             "identifiers":[systemId],
             "name":"Solar RESOL VBus",
             "manufacturer":"Citrin Solar",
-            "model":"CS 2.5",
-            #"configuration_url":"http://192.168.2.64/",
+            "model":device_name,
             "suggested_area":area
         }
     }
@@ -145,7 +144,7 @@ def on_publish(client, userdata, mid, reason_code, properties):  # pylint: disab
     logging.debug("on_publish(): message send %s", str(mid))
 
 
-if DEBUG:
+if debug:
     logging.getLogger().setLevel(logging.DEBUG)
     logging.info("Debug output enabled.")
 
@@ -163,15 +162,16 @@ mqttc.username_pw_set(mqtt_config.user, password=mqtt_config.pwd)
 mqttc.connect(mqtt_config.host, port=mqtt_config.port)
 mqttc.loop_start()
 
-homa_init()		# setup HomA MQTT device and control settings
+homa_init()  # setup HomA MQTT device and control settings
 
 # Load JSON data passed to stdin
 data = json.load(sys.stdin)
 try:
-    # TODO: get 'DeltaSol BX' from spec file
-    data = data['DeltaSol BX']
-except:
-    sys.exit('Cannot load "DeltaSol BX" data')
+    data = data[device_name]
+except KeyError as e:
+    logging.error("Didn't find device name %s: %s", device_name, e)
+    sys.exit(1)
+
 # 'Systemzeit' is always empty, set own time ...
 #data['Systemzeit'] = now.strftime("%d.%m.%Y_%H:%M:%S")
 data['Systemzeit'] = now.replace(microsecond=0).isoformat()

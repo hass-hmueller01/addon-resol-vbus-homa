@@ -1,10 +1,7 @@
 configuration:
   device_name:
-    name: "Device Name"
-    description: "HomA and Home Assistant device name (default: `Solar`)"
-  spec_file:
-    name: "RESOL VBus Specification File"
-    description: "The RESOL VBus specification file name. (e.g. DeltaSolBX.json if located in RESOL VBus spec folder) If an absolute path is given, this file will be used directly."
+    name: "RESOL VBus Device Name"
+    description: "RESOL VBus device name. See specification file. (default: `DeltaSol BX`)"
   tty:
     name: "TTY"
     description: "The name of the tty used to communicate with the hardware. (e.g. /dev/ttyAMA0)"
@@ -14,6 +11,9 @@ configuration:
   homa_system_id:
     name: "HomA System ID"
     description: "HomA System ID to build MQTT topic /devices/<systemid>/controls/... (default: `123456-solar`)"
+  homa_device:
+    name: "HomA Device Name"
+    description: "HomA device name (default: `Solar`)"
   homa_room:
     name: "HomA Room"
     description: "HomA room name (default: `Sensors`)"
