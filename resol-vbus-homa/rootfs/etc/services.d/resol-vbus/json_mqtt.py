@@ -44,7 +44,8 @@ mqtt_arr = [
     {'field': 'Temperatur Sensor 3', 'unit': ' °C', 'topic': 'Speichertemperatur Mitte', 'class': 'temperature'},
     {'field': 'Temperatur Sensor 4', 'unit': ' °C', 'topic': 'Ruecklauftemperatur',      'class': 'temperature'},
     {'field': 'PWM 1',               'unit': ' %',  'topic': 'Solarpumpe Drehzahl',      'class': 'power_factor'},
-    {'field': 'Drehzahl Relais 2',   'unit': '',    'topic': 'Umschaltventil Position',  'class': '_int'},
+    {'field': 'Drehzahl Relais 2',   'unit': '',    'topic': 'Umschaltventil Position',  'class': '_int',
+     'template': '{% if value | int == 0 %}Heizung{% elif value | int == 100 %}Kessel{% else %}{{ value }}{% endif %}'},
     {'field': 'Systemzeit',          'unit': '',    'topic': 'Solar Zeit',               'class': '_datetime'},
 ]
 
